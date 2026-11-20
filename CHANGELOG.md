@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2
+
+- Et bibliotek, hvis mappe ikke kan nås (f.eks. en NAS, der er slukket om natten), beholder nu det sidst kendte indhold i stedet for at blive tomt. Det gælder også et tomt mountpoint, når biblioteket før havde indhold. Admin-siden viser "kan ikke nås – viser sidst kendte indhold". Når mappen er tilbage, scannes den som normalt, og set-status og fortsæt-punkter er uændrede.
+
 ## 0.1.1
 
 - Rettet: databasekoden manglede i 0.1.0 på GitHub (en `.gitignore`-regel for datamappen ramte også kildemappen `Data` på Windows), så Docker-imaget kunne ikke bygges. Mappen hedder nu `Storage`, så den heller ikke kolliderer med datamappen, når serveren startes fra projektmappen.

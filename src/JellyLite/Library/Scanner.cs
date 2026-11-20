@@ -60,9 +60,12 @@ public sealed class Scanner(AppConfig cfg, Db db, ILogger log)
             lib.LibraryId = lib.Id;
             snap.Libraries.Add(lib);
             snap.Items[lib.Id] = lib;
-            if (!Directory.Exists(lc.Path))
+            if (!Reachable(lc.Path, previous.Get(lib.Id)))
             {
-                log.LogWarning("Library {Name}: folder {Path} not found", lc.Name, lc.Path);
+                // NAS off or network share not mounted: keep showing what was there, instead of an empty library
+                lib.Offline = true;
+                var kept = KeepPrevious(snap, previous, lib);
+                log.LogWarning("Library {Name}: {Path} is not reachable, keeping {Count} known items", lc.Name, lc.Path, kept);
                 continue;
             }
             var root = Path.GetFullPath(lc.Path);
@@ -76,17 +79,79 @@ public sealed class Scanner(AppConfig cfg, Db db, ILogger log)
             log.LogInformation("Library {Name}: {Count} items", lc.Name, snap.Descendants(lib).Count());
         }
         ResolvePeople(snap);
+        KeepPreviousPeople(snap, previous);
         foreach (var it in snap.Items.Values)
         {
             foreach (var name in it.Studios)
             {
                 var id = Ids.From("studio:" + name.ToLowerInvariant());
                 if (!snap.Studios.ContainsKey(id))
-                    snap.Studios[id] = new Studio { Id = id, Name = name, Image = ctx.StudioImages.GetValueOrDefault(name) };
+                    snap.Studios[id] = new Studio
+                    {
+                        Id = id,
+                        Name = name,
+                        Image = ctx.StudioImages.GetValueOrDefault(name) ?? previous.Studios.GetValueOrDefault(id)?.Image,
+                    };
             }
         }
         if (ctx.NewFirstSeen.Count > 0) db.AddFirstSeen(ctx.NewFirstSeen);
         return snap;
+    }
+
+    /// <summary>A library folder counts as unreachable when it's missing or can't be listed, or when it's
+    /// suddenly empty while the last scan found items (an unmounted share often leaves an empty mount point).</summary>
+    internal static bool Reachable(string path, Item? previousLibrary)
+    {
+        try
+        {
+            if (!Directory.Exists(path)) return false;
+            var empty = !Directory.EnumerateFileSystemEntries(path).Any();
+            return !(empty && previousLibrary is { Children.Count: > 0 });
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>Copies a library's items from the previous scan. Returns how many were kept.</summary>
+    private static int KeepPrevious(LibrarySnapshot snap, LibrarySnapshot previous, Item lib)
+    {
+        if (previous.Get(lib.Id) is not { } old) return 0;
+        lib.Children.AddRange(old.Children);
+        var count = 0;
+        foreach (var it in previous.Descendants(old))
+        {
+            it.KeptFromPreviousScan = true;
+            snap.Items[it.Id] = it;
+            count++;
+        }
+        return count;
+    }
+
+    /// <summary>People for kept items (their metadata files couldn't be read this time).</summary>
+    private static void KeepPreviousPeople(LibrarySnapshot snap, LibrarySnapshot previous)
+    {
+        foreach (var it in snap.Items.Values.Where(i => i.KeptFromPreviousScan))
+        {
+            foreach (var p in it.People)
+            {
+                if (!snap.People.TryGetValue(p.Id, out var person))
+                {
+                    var old = previous.People.GetValueOrDefault(p.Id);
+                    snap.People[p.Id] = person = new Person
+                    {
+                        Id = p.Id,
+                        Name = p.Name,
+                        TmdbId = old?.TmdbId,
+                        ImdbId = old?.ImdbId,
+                        Image = old?.Image,
+                    };
+                }
+                person.ItemIds.Add(it.Id);
+                if (it.SeriesId is Guid sid) person.ItemIds.Add(sid);
+            }
+        }
     }
 
     // ---------- Movies ----------

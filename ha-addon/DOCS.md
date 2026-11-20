@@ -16,6 +16,10 @@ En lille medieserver, der taler Jellyfins API, så TvFin på Samsung-TV'et kan b
 
 I TvFin skriver du Home Assistants IP-adresse (port 8096) og vælger Quick Connect. Koden dukker op på JellyLite-siden i Home Assistant. Vælg bruger og tryk *Godkend*.
 
+## NAS der slukker
+
+Er NAS'en slukket (eller netværkslageret ikke monteret), beholder JellyLite det sidst kendte indhold, så bibliotekerne ikke bliver tomme. Afspilning virker først igen, når NAS'en er tilbage. Genstartes add-on'et, mens NAS'en er slukket, er bibliotekerne tomme, indtil den er tilbage.
+
 ## admin_password
 
 Admin-siden virker altid via Home Assistant-sidepanelet. Sæt `admin_password`, hvis du også vil kunne åbne `http://<ha-ip>:8096/` direkte fra en anden computer.

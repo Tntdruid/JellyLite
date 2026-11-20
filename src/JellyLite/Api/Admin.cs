@@ -45,7 +45,7 @@ public static class Admin
                     type = l.CollectionType,
                     path = l.Path,
                     items = lib.Descendants(l).Count(i => i.IsPlayable),
-                    exists = l.Path != null && Directory.Exists(l.Path),
+                    offline = l.Offline,
                 }),
                 users = users.All.Select(u => new { id = Ids.N(u.Id), name = u.Name }),
                 pending = qc.Pending.Select(r => new { code = r.Code, device = r.Client.Device, app = r.Client.Client, version = r.Client.Version, created = r.Created }),
@@ -160,7 +160,8 @@ async function load() {
     'Sidst scannet ' + when(s.lastScan) + (s.probePending ? ' · aflæser ' + s.probePending + ' filer med ffprobe…' : '');
   document.getElementById('libs').innerHTML = s.libraries.map(function (l) {
     return '<tr><td>' + esc(l.name) + '</td><td>' + esc(typeNames[l.type] || l.type) + '</td><td>' + esc(l.path) +
-      (l.exists ? '' : ' <span class="warn">(findes ikke)</span>') + '</td><td>' + l.items + '</td></tr>';
+      (l.offline ? ' <span class="warn">(kan ikke nås' + (l.items ? ' – viser sidst kendte indhold' : '') + ')</span>' : '') +
+      '</td><td>' + l.items + '</td></tr>';
   }).join('') || '<tr><td colspan="4" class="empty">Ingen biblioteker i konfigurationen.</td></tr>';
   document.getElementById('devices').innerHTML = s.devices.map(function (d) {
     return '<tr><td>' + esc(d.user) + '</td><td>' + esc(d.device) + '</td><td>' + esc(d.app) + '</td><td>' + when(d.created) +

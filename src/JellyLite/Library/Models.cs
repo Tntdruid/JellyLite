@@ -90,6 +90,11 @@ public sealed class Item
     /// <summary>Set by the prober (ffprobe) in the background.</summary>
     public MediaInfo? Media { get; set; }
 
+    /// <summary>Library whose folder couldn't be reached at the last scan (e.g. NAS switched off).</summary>
+    public bool Offline { get; set; }
+    /// <summary>Taken over unchanged from the previous scan because its library was offline.</summary>
+    public bool KeptFromPreviousScan { get; set; }
+
     public bool IsFolder => Type is ItemTypes.Library or ItemTypes.Series or ItemTypes.Season;
     public bool IsPlayable => Type is ItemTypes.Movie or ItemTypes.Episode or ItemTypes.Video;
     public long? RunTimeTicks => Media?.RunTimeTicks ?? MetadataRunTimeTicks;
