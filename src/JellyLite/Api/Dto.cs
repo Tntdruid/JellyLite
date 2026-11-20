@@ -81,10 +81,11 @@ public static class Dto
                 var src = MediaSource(it, c.Token);
                 d["MediaSources"] = new[] { src };
                 d["MediaStreams"] = src["MediaStreams"];
-                d["Chapters"] = (it.Media?.Chapters ?? []).Select(ch => new Dictionary<string, object?>
+                d["Chapters"] = (it.Media?.Chapters ?? []).Select((ch, i) => new Dictionary<string, object?>
                 {
                     ["StartPositionTicks"] = ch.StartTicks,
                     ["Name"] = ch.Name,
+                    ["ImageTag"] = ChapterImages.Tag(it, i),
                 }).ToList();
             }
         }

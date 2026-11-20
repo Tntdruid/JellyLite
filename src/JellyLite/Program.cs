@@ -21,6 +21,7 @@ builder.Services.AddSingleton<Db>();
 builder.Services.AddSingleton<Prober>();
 builder.Services.AddSingleton<SubtitleService>();
 builder.Services.AddSingleton<RemoteImages>();
+builder.Services.AddSingleton<ChapterImages>();
 builder.Services.AddSingleton<Users>();
 builder.Services.AddSingleton<QuickConnectStore>();
 builder.Services.AddSingleton<LibraryService>();

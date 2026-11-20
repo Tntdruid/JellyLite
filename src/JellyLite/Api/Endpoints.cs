@@ -291,6 +291,12 @@ public static class Endpoints
         {
             var lib = await h.RequestServices.GetRequiredService<LibraryService>().GetAsync();
             ImageRef? img = null;
+            if (lib.Get(id) is { IsPlayable: true } video && type.Equals("Chapter", StringComparison.OrdinalIgnoreCase))
+            {
+                await h.RequestServices.GetRequiredService<LibraryService>().EnsureProbedAsync(video, h.RequestAborted);
+                var frame = await h.RequestServices.GetRequiredService<ChapterImages>().GetAsync(video, index ?? 0, h.RequestAborted);
+                return frame == null ? Results.NotFound() : ImageFile(h, frame);
+            }
             if (lib.Get(id) is { } it)
                 img = type.Equals("Backdrop", StringComparison.OrdinalIgnoreCase) ? it.Backdrops.ElementAtOrDefault(index ?? 0) : it.Images.GetValueOrDefault(type);
             else if (lib.People.TryGetValue(id, out var p) && type.Equals("Primary", StringComparison.OrdinalIgnoreCase))

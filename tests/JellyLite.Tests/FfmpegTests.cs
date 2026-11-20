@@ -44,6 +44,16 @@ public sealed class FfmpegTests
             Assert.NotNull(vtt);
             Assert.StartsWith("WEBVTT", vtt);
             Assert.Contains("Indlejret tekst", vtt);
+
+            // Scene picture for chapter 2 ("Handling"), cached after the first grab
+            item.Mtime = fi.LastWriteTimeUtc;
+            var chapters = new ChapterImages(cfg, NullLogger<ChapterImages>.Instance);
+            var jpg = await chapters.GetAsync(item, 1, default);
+            Assert.NotNull(jpg);
+            var bytes = await File.ReadAllBytesAsync(jpg);
+            Assert.True(bytes.Length > 500 && bytes[0] == 0xFF && bytes[1] == 0xD8, "not a JPEG");
+            Assert.Equal(jpg, await chapters.GetAsync(item, 1, default));
+            Assert.Null(await chapters.GetAsync(item, 5, default));   // no such chapter
         }
         finally
         {

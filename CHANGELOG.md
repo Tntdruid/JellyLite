@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3
+
+- Bibliotekerne har nu et billede i stedet for en grå boks: et billede i selve biblioteksmappen (`folder.jpg`, `poster.jpg`, `backdrop.jpg` …), ellers baggrunden eller thumbnailen fra det nyeste indhold.
+- Scener (kapitler) har nu billeder. ffmpeg tager ét billede pr. kapitel første gang og gemmer det i `{data}/cache/chapters`.
+
 ## 0.1.2
 
 - Et bibliotek, hvis mappe ikke kan nås (f.eks. en NAS, der er slukket om natten), beholder nu det sidst kendte indhold i stedet for at blive tomt. Det gælder også et tomt mountpoint, når biblioteket før havde indhold. Admin-siden viser "kan ikke nås – viser sidst kendte indhold". Når mappen er tilbage, scannes den som normalt, og set-status og fortsæt-punkter er uændrede.

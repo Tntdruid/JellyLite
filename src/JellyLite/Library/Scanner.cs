@@ -76,6 +76,7 @@ public sealed class Scanner(AppConfig cfg, Db db, ILogger log)
                 case "homevideos": ScanVideos(snap, ctx, lib, root); break;
                 default: ScanMovies(snap, ctx, lib, root); break;
             }
+            LibraryImage(snap, lib, root);
             log.LogInformation("Library {Name}: {Count} items", lc.Name, snap.Descendants(lib).Count());
         }
         ResolvePeople(snap);
@@ -114,10 +115,30 @@ public sealed class Scanner(AppConfig cfg, Db db, ILogger log)
         }
     }
 
+    /// <summary>The library's card image: an image in the library folder itself (poster.jpg, backdrop.jpg ...),
+    /// otherwise a wide image from the newest content (backdrop, landscape thumb, or episode/video thumbnail).</summary>
+    private static void LibraryImage(LibrarySnapshot snap, Item lib, string root)
+    {
+        if (ListDir(root) is { } dir && Named(dir, "folder", "poster", "cover", "backdrop", "fanart", "landscape", "thumb") is { } own)
+        {
+            lib.Images["Primary"] = own;
+            return;
+        }
+        static ImageRef? Wide(Item i) =>
+            i.Backdrops.FirstOrDefault() ?? i.Images.GetValueOrDefault("Thumb") ??
+            (i.Type is ItemTypes.Episode or ItemTypes.Video ? i.Images.GetValueOrDefault("Primary") : null);
+        var pick = snap.ChildrenOf(lib)
+            .OrderByDescending(i => i.DateLastContentAdded ?? i.DateCreated)
+            .Select(Wide)
+            .FirstOrDefault(img => img != null);
+        if (pick != null) lib.Images["Primary"] = pick;
+    }
+
     /// <summary>Copies a library's items from the previous scan. Returns how many were kept.</summary>
     private static int KeepPrevious(LibrarySnapshot snap, LibrarySnapshot previous, Item lib)
     {
         if (previous.Get(lib.Id) is not { } old) return 0;
+        foreach (var (k, v) in old.Images) lib.Images[k] = v;
         lib.Children.AddRange(old.Children);
         var count = 0;
         foreach (var it in previous.Descendants(old))

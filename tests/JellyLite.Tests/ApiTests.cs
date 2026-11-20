@@ -67,6 +67,25 @@ public sealed class ApiTests(ServerFixture fx) : IClassFixture<ServerFixture>
     }
 
     [Fact]
+    public async Task Libraries_get_a_wide_image_from_their_newest_content()
+    {
+        var (c, _, _) = await fx.LoginAsync("Bob");
+        foreach (var lib in Items(await Json(c, "/UserViews")))
+        {
+            var tag = lib.GetProperty("ImageTags").GetProperty("Primary").GetString();
+            var r = await fx.Anonymous().GetAsync($"/Items/{Id(lib)}/Images/Primary?fillHeight=360&tag={tag}");
+            Assert.True(r.IsSuccessStatusCode, Name(lib));
+        }
+        // Film: Inception's fanart (not its tall poster); YouTube: the video thumbnail
+        var film = await Library(c, "Film");
+        var inception = Items(await Json(c, $"/Items?ParentId={Id(film)}&Recursive=true&IncludeItemTypes=Movie&SortBy=SortName"))[0];
+        Assert.Equal(inception.GetProperty("BackdropImageTags")[0].GetString(), film.GetProperty("ImageTags").GetProperty("Primary").GetString());
+        var yt = await Library(c, "YouTube");
+        var video = Items(await Json(c, $"/Items?ParentId={Id(yt)}&SortBy=SortName")).First(v => Name(v) == "Video One");
+        Assert.Equal(video.GetProperty("ImageTags").GetProperty("Primary").GetString(), yt.GetProperty("ImageTags").GetProperty("Primary").GetString());
+    }
+
+    [Fact]
     public async Task Movies_get_metadata_from_nfo_and_file_names()
     {
         var (c, _, _) = await fx.LoginAsync("Bob");
