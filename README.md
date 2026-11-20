@@ -61,6 +61,10 @@ JELLYFIN_API_KEY=<nøglen>
 
 `JELLYFIN_PATH` kan blive stående eller slettes: JellyLite scanner hele biblioteket ved hver forespørgsel.
 
+### Statistik (Jellyfin Video Stats)
+
+[Jellyfin Video Stats](https://github.com/Tntdruid/jellyfin-video-stats) virker med JellyLite: sæt dens Jellyfin-adresse til JellyLite og brug en API-nøgle fra JellyLites admin-side. JellyLite leverer de kald, den bruger: aktive afspilninger (`/Sessions`, ud fra klienternes afspilningsrapporter; en afspilning uden rapport i et minut regnes som stoppet), brugere (`/Users`), titler med `Path`, afsnit med set-status og billeder. Playback Reporting-importen findes ikke i JellyLite og springes over.
+
 Datamappen er `./data`, eller `$JELLYLITE_DATA`. Konfigurationen kan også peges ud med `$JELLYLITE_CONFIG`.
 
 ## Mappestruktur

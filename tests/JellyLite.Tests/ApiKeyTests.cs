@@ -54,8 +54,10 @@ public sealed class ApiKeyTests(ServerFixture fx) : IClassFixture<ServerFixture>
         var c = WithKey(key, bearer: true);
         (await c.GetAsync("/System/Info")).EnsureSuccessStatusCode();
 
-        // Per-user calls need to say which user
-        Assert.Equal(HttpStatusCode.BadRequest, (await c.GetAsync("/UserViews")).StatusCode);
+        // Reading works without a user (no watch state); changing a user's data needs to say which user
+        Assert.Equal(HttpStatusCode.OK, (await c.GetAsync("/UserViews")).StatusCode);
+        var anyMovie = (await c.GetFromJsonAsync<JsonElement>("/Items?Recursive=true&IncludeItemTypes=Movie")).GetProperty("Items")[0].GetProperty("Id").GetString();
+        Assert.Equal(HttpStatusCode.BadRequest, (await c.PostAsync($"/UserPlayedItems/{anyMovie}", null)).StatusCode);
         var (_, userId, _) = await fx.LoginAsync("Alice");
         var views = await c.GetFromJsonAsync<JsonElement>($"/UserViews?userId={userId}");
         Assert.Equal(3, views.GetProperty("Items").GetArrayLength());

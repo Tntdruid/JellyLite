@@ -12,6 +12,8 @@ public sealed class DtoContext(LibrarySnapshot lib, Dictionary<Guid, UserData> u
     public Dictionary<Guid, UserData> UserData { get; } = userData;
     public string ServerId { get; } = serverId;
     public string? Token { get; } = token;
+    /// <summary>Include the file path (asked for with Fields=Path, e.g. by statistics programs).</summary>
+    public bool IncludePath { get; init; }
 
     public UserData Ud(Guid id) => UserData.TryGetValue(id, out var d) ? d : new UserData { ItemId = id };
 }
@@ -42,6 +44,8 @@ public static class Dto
         void Add(string k, object? v) { if (v != null) d[k] = v; }
 
         Add("CollectionType", it.CollectionType);
+        if (c.IncludePath && it.Type != ItemTypes.Library) Add("Path", it.Path);
+        Add("Status", it.Status);
         Add("OriginalTitle", it.OriginalTitle);
         Add("Overview", it.Overview);
         Add("Taglines", it.Tagline != null ? new[] { it.Tagline } : null);

@@ -16,7 +16,14 @@ public static class Endpoints
         var lib = await h.RequestServices.GetRequiredService<LibraryService>().GetAsync();
         var db = h.RequestServices.GetRequiredService<Db>();
         var cfg = h.RequestServices.GetRequiredService<AppConfig>();
-        return new DtoContext(lib, db.UserDataFor(h.User().Id), cfg.ServerId, h.Client().Token);
+        // An API key without ?userId= (e.g. a statistics program) sees the library without anyone's watch state
+        var user = h.Items["user"] as UserInfo;
+        if (user == null && !AuthMiddleware.IsApiKey(h)) throw new UserRequiredException();
+        var fields = ItemQuery.Split(h.Request.Query["Fields"]);
+        return new DtoContext(lib, user != null ? db.UserDataFor(user.Id) : [], cfg.ServerId, h.Client().Token)
+        {
+            IncludePath = fields.Contains("Path", StringComparer.OrdinalIgnoreCase),
+        };
     }
 
     private static void Get(WebApplication app, Delegate handler, params string[] patterns)
@@ -48,6 +55,15 @@ public static class Endpoints
         foreach (var p in o.EnumerateObject())
             if (p.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
                 return p.Value.ValueKind switch { JsonValueKind.String => p.Value.GetString(), JsonValueKind.Number => p.Value.GetRawText(), _ => null };
+        return null;
+    }
+
+    private static bool? PropBool(JsonElement? e, string name)
+    {
+        if (e is not { ValueKind: JsonValueKind.Object } o) return null;
+        foreach (var p in o.EnumerateObject())
+            if (p.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                return p.Value.ValueKind switch { JsonValueKind.True => true, JsonValueKind.False => false, _ => null };
         return null;
     }
 
@@ -147,6 +163,54 @@ public static class Endpoints
             });
         });
         app.MapPost("/Users/AuthenticateByName", () => Results.Json(new { Message = "Brug Quick Connect" }, statusCode: 401));
+
+        // All users for an API key (statistics programs); a signed-in user only sees themselves
+        Get(app, (HttpContext h, Users users, AppConfig cfg) =>
+        {
+            var list = AuthMiddleware.IsApiKey(h) ? users.All : [h.User()];
+            return list.Select(u => Dto.User(u, cfg.ServerId, UserImageTag(users, u))).ToList();
+        }, "/Users");
+
+        // Who is watching what right now
+        Get(app, async (HttpContext h, SessionTracker tracker, LibraryService ls, AppConfig cfg) =>
+        {
+            var lib = await ls.GetAsync();
+            var all = tracker.Active(DateTime.UtcNow);
+            if (!AuthMiddleware.IsApiKey(h)) all = all.Where(s => s.User.Id == h.User().Id).ToList();
+            var c = new DtoContext(lib, [], cfg.ServerId, null);
+            return all.Select(s =>
+            {
+                var d = new Dictionary<string, object?>
+                {
+                    ["Id"] = s.Id,
+                    ["UserId"] = Ids.N(s.User.Id),
+                    ["UserName"] = s.User.Name,
+                    ["Client"] = s.Client.Client,
+                    ["DeviceName"] = s.Client.Device,
+                    ["DeviceId"] = s.Client.DeviceId,
+                    ["ApplicationVersion"] = s.Client.Version,
+                    ["LastActivityDate"] = s.LastActivity,
+                    ["IsActive"] = true,
+                    ["SupportsRemoteControl"] = false,
+                    ["PlayState"] = new Dictionary<string, object?>
+                    {
+                        ["PositionTicks"] = s.PositionTicks,
+                        ["IsPaused"] = s.IsPaused,
+                        ["CanSeek"] = true,
+                        ["PlayMethod"] = s.PlayMethod,
+                        ["AudioStreamIndex"] = s.AudioStreamIndex,
+                        ["SubtitleStreamIndex"] = s.SubtitleStreamIndex,
+                    },
+                };
+                if (lib.Get(s.ItemId) is { } it)
+                {
+                    var item = Dto.Item(it, c);
+                    item["MediaStreams"] = Dto.MediaSource(it, null)["MediaStreams"];
+                    d["NowPlayingItem"] = item;
+                }
+                return d;
+            }).ToList();
+        }, "/Sessions");
         Get(app, () => Array.Empty<object>(), "/Users/Public");
 
         Get(app, (HttpContext h, Users users, AppConfig cfg) => Dto.User(h.User(), cfg.ServerId, UserImageTag(users, h.User())), "/Users/Me");
@@ -390,16 +454,23 @@ public static class Endpoints
 
         foreach (var (path, kind) in new[] { ("/Sessions/Playing", "start"), ("/Sessions/Playing/Progress", "progress"), ("/Sessions/Playing/Stopped", "stop") })
         {
-            app.MapPost(path, async (HttpContext h, LibraryService ls, Db db) =>
+            app.MapPost(path, async (HttpContext h, LibraryService ls, Db db, SessionTracker sessions) =>
             {
                 var body = await Body(h.Request);
                 var lib = await ls.GetAsync();
+                var user = h.User();
                 if (Ids.Parse(Prop(body, "ItemId")) is not Guid id || lib.Get(id) is not { IsPlayable: true } it) return Results.NoContent();
-                var ud = db.Get(h.User().Id, id);
+                var ud = db.Get(user.Id, id);
                 long? pos = long.TryParse(Prop(body, "PositionTicks"), out var p) ? p : null;
-                if (kind == "start") ud.LastPlayed = DateTime.UtcNow;
-                else Playstate.Report(ud, pos, it.RunTimeTicks, kind == "stop", DateTime.UtcNow);
-                db.Save(h.User().Id, [ud]);
+                var now = DateTime.UtcNow;
+                if (kind == "start") ud.LastPlayed = now;
+                else Playstate.Report(ud, pos, it.RunTimeTicks, kind == "stop", now);
+                db.Save(user.Id, [ud]);
+
+                if (kind == "stop") sessions.Stop(user, h.Client());
+                else sessions.Report(user, h.Client(), id, pos, PropBool(body, "IsPaused"), Prop(body, "PlayMethod"),
+                    int.TryParse(Prop(body, "AudioStreamIndex"), out var a) ? a : null,
+                    int.TryParse(Prop(body, "SubtitleStreamIndex"), out var s) ? s : null, now);
                 return Results.NoContent();
             });
         }

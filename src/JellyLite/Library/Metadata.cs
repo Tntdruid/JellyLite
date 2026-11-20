@@ -8,7 +8,7 @@ namespace JellyLite.Library;
 /// <summary>Data from a Kodi/Jellyfin .nfo file.</summary>
 public sealed class NfoData
 {
-    public string? Title, OriginalTitle, SortTitle, ShowTitle, Plot, Tagline, Mpaa;
+    public string? Title, OriginalTitle, SortTitle, ShowTitle, Plot, Tagline, Mpaa, Status;
     public int? Year, Season, Episode, EpisodeEnd, RuntimeMinutes;
     public DateTime? Premiered;
     public float? Rating;
@@ -51,6 +51,7 @@ public static partial class Nfo
             Plot = Str(root, "plot") ?? Str(root, "outline"),
             Tagline = Str(root, "tagline"),
             Mpaa = Str(root, "mpaa"),
+            Status = Str(root, "status"),
             Year = Int(Str(root, "year")),
             Season = Int(Str(root, "season")),
             Episode = Int(Str(root, "episode")),

@@ -71,6 +71,8 @@ public sealed class Item
     public string? Overview { get; set; }
     public string? Tagline { get; set; }
     public string? OfficialRating { get; set; }
+    /// <summary>Series: Continuing | Ended (from tvshow.nfo).</summary>
+    public string? Status { get; set; }
     public float? CommunityRating { get; set; }
     public List<string> Genres { get; set; } = [];
     public List<string> Studios { get; set; } = [];

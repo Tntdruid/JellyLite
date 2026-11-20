@@ -24,6 +24,8 @@ Nederst på JellyLite-siden: skriv Jellyfins adresse og en API-nøgle fra Jellyf
 
 Opret en API-nøgle nederst på JellyLite-siden. AutoYTDownload bruger den som en Jellyfin-nøgle: sæt `JELLYFIN_URL=http://<ha-ip>:8096` og `JELLYFIN_API_KEY=<nøglen>`, så dukker nye videoer op med det samme.
 
+Jellyfin Video Stats virker på samme måde: sæt dens Jellyfin-adresse til `http://<ha-ip>:8096` og brug en API-nøgle fra JellyLite. Importen fra Playback Reporting findes ikke her og springes over.
+
 ## NAS der slukker
 
 Er NAS'en slukket (eller netværkslageret ikke monteret), beholder JellyLite det sidst kendte indhold, så bibliotekerne ikke bliver tomme. Afspilning virker først igen, når NAS'en er tilbage. Genstartes add-on'et, mens NAS'en er slukket, er bibliotekerne tomme, indtil den er tilbage.

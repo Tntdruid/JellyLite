@@ -502,6 +502,7 @@ public sealed class Scanner(AppConfig cfg, Db db, ILogger log)
         it.Overview = n.Plot;
         it.Tagline = n.Tagline;
         it.OfficialRating = n.Mpaa;
+        it.Status = n.Status;
         it.CommunityRating = n.Rating;
         it.ProductionYear = n.Year;
         it.PremiereDate = n.Premiered;

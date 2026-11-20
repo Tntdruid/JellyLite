@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.5
+
+- Virker med Jellyfin Video Stats:
+  - `GET /Sessions` viser aktive afspilninger (bruger, titel, position, pause, afspilningsmetode, lyd- og undertekstspor) ud fra klienternes afspilningsrapporter. En afspilning uden rapport i et minut regnes som stoppet.
+  - `GET /Users` viser alle brugere for en API-nøgle (et TV-login ser kun sig selv).
+  - En API-nøgle uden `userId` kan læse biblioteket (uden set-status). Ændringer af en brugers data kræver stadig en bruger.
+  - `Path` medsendes, når der spørges efter det med `Fields=Path`, og seriestatus (Continuing/Ended) læses fra `tvshow.nfo`.
+
 ## 0.1.4
 
 - Import fra Jellyfin: set, fortsæt-punkter, favoritter og antal visninger pr. bruger (admin-siden → *Importér fra Jellyfin*). Brugere foreslås ud fra navnet; filer matches på slutningen af stien. Kan gentages uden at overskrive det, der er set i JellyLite siden.

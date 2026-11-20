@@ -25,6 +25,7 @@ builder.Services.AddSingleton<RemoteImages>();
 builder.Services.AddSingleton<ChapterImages>();
 builder.Services.AddSingleton<Users>();
 builder.Services.AddSingleton<QuickConnectStore>();
+builder.Services.AddSingleton<SessionTracker>();
 builder.Services.AddSingleton<LibraryService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<LibraryService>());
 builder.Services.AddHttpClient();
