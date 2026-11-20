@@ -127,6 +127,9 @@ public sealed class ServerFixture : IDisposable
         File("Serier/Test Show (2020)/Season 01/Test Show - S01E01 - Pilot-thumb.jpg", "jpg");
         File("Serier/Test Show (2020)/Season 01/Test Show - S01E02 - Second.mkv");
         File("Serier/Test Show (2020)/Season 01/Test Show - S01E10 - Tenth.mkv");
+        // Placeholder title from TMDB with the real title as original title (what Episode Title Fixer fixed)
+        File("Serier/Test Show (2020)/Season 01/Test Show - S01E10 - Tenth.nfo",
+            "<episodedetails><title>Afsnit 10</title><originaltitle>Tiende</originaltitle><season>1</season><episode>10</episode></episodedetails>");
         File("Serier/Test Show (2020)/Season 02/Test.Show.S02E01.mkv");
         File("Serier/Test Show (2020)/Specials/Test Show - S00E01 - Bonus.mkv");
 

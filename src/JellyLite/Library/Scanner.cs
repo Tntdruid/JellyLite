@@ -512,7 +512,36 @@ public sealed class Scanner(AppConfig cfg, Db db, ILogger log)
         foreach (var (k, v) in n.Ids) it.ProviderIds[k] = v;
     }
 
-    private static void Finish(Item it, NfoData? n) => it.SortName = FilenameParser.SortName(n?.SortTitle ?? it.Name);
+    private void Finish(Item it, NfoData? n)
+    {
+        if (Placeholder is { } rx && rx.IsMatch(it.Name) && !string.IsNullOrWhiteSpace(it.OriginalTitle) && !rx.IsMatch(it.OriginalTitle))
+            it.Name = it.OriginalTitle.Trim();
+        it.SortName = FilenameParser.SortName(n?.SortTitle ?? it.Name);
+    }
+
+    private System.Text.RegularExpressions.Regex? _placeholder;
+    private bool _placeholderBuilt;
+
+    /// <summary>Placeholder titles ("Afsnit 11", "Episode 11"): replaced by the original title when there is a real one.</summary>
+    private System.Text.RegularExpressions.Regex? Placeholder
+    {
+        get
+        {
+            if (_placeholderBuilt) return _placeholder;
+            _placeholderBuilt = true;
+            if (!cfg.FixPlaceholderTitles) return null;
+            var pattern = string.IsNullOrWhiteSpace(cfg.PlaceholderTitlePattern) ? AppConfig.DefaultPlaceholderPattern : cfg.PlaceholderTitlePattern;
+            try
+            {
+                _placeholder = new(pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1));
+            }
+            catch (ArgumentException e)
+            {
+                log.LogError(e, "Invalid placeholder_title_pattern {Pattern}; titles are not fixed", pattern);
+            }
+            return _placeholder;
+        }
+    }
 
     private static void Add(LibrarySnapshot snap, Item lib, Item it)
     {

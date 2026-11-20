@@ -1,4 +1,6 @@
+using System.Text.Json;
 using JellyLite.Auth;
+using JellyLite.Import;
 using JellyLite.Storage;
 using JellyLite.Library;
 using JellyLite.Media;
@@ -50,7 +52,45 @@ public static class Admin
                 users = users.All.Select(u => new { id = Ids.N(u.Id), name = u.Name }),
                 pending = qc.Pending.Select(r => new { code = r.Code, device = r.Client.Device, app = r.Client.Client, version = r.Client.Version, created = r.Created }),
                 devices = db.Tokens().Select(t => new { id = t.Id, user = names.GetValueOrDefault(t.UserId, "?"), device = t.DeviceName, app = t.Client, created = t.Created }),
+                apiKeys = db.ApiKeys().Select(k => new { id = k.Id, name = k.Name, key = k.Key, created = k.Created }),
             };
+        });
+
+        group.MapPost("/admin/api/apikeys", (ApiKeyRequest body, Db db) =>
+            string.IsNullOrWhiteSpace(body.Name) ? Results.BadRequest("Navn mangler") : Results.Ok(new { key = db.AddApiKey(body.Name.Trim()) }));
+
+        group.MapDelete("/admin/api/apikeys/{id:long}", (long id, Db db) =>
+        {
+            db.RemoveApiKey(id);
+            return Results.NoContent();
+        });
+
+        // Import watch state from Jellyfin: 1) list its users with suggested matches, 2) import
+        group.MapPost("/admin/api/jellyfin/users", async (JellyfinRequest body, JellyfinImport import, CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(body.Url) || string.IsNullOrWhiteSpace(body.ApiKey)) return Results.BadRequest("Adresse og API-nøgle mangler");
+            try
+            {
+                return Results.Ok(await import.UsersAsync(body.Url.Trim(), body.ApiKey.Trim(), ct));
+            }
+            catch (Exception e) when (e is HttpRequestException or TaskCanceledException or UriFormatException or JsonException)
+            {
+                return Results.BadRequest("Kunne ikke hente brugere fra Jellyfin: " + e.Message);
+            }
+        });
+
+        group.MapPost("/admin/api/jellyfin/import", async (JellyfinRequest body, JellyfinImport import, CancellationToken ct) =>
+        {
+            if (string.IsNullOrWhiteSpace(body.Url) || string.IsNullOrWhiteSpace(body.ApiKey) || body.Map is not { Count: > 0 })
+                return Results.BadRequest("Vælg mindst én bruger at importere");
+            try
+            {
+                return Results.Ok(await import.ImportAsync(body.Url.Trim(), body.ApiKey.Trim(), body.Map, ct));
+            }
+            catch (Exception e) when (e is HttpRequestException or TaskCanceledException or UriFormatException or JsonException)
+            {
+                return Results.BadRequest("Importen fejlede: " + e.Message);
+            }
         });
 
         group.MapPost("/admin/api/quickconnect", (AuthorizeRequest body, QuickConnectStore qc, Users users) =>
@@ -73,6 +113,9 @@ public static class Admin
     }
 
     public sealed record AuthorizeRequest(string? Code, string? UserId);
+    public sealed record ApiKeyRequest(string? Name);
+    /// <summary>Map: Jellyfin user id -> JellyLite user id (users left out are skipped).</summary>
+    public sealed record JellyfinRequest(string? Url, string? ApiKey, Dictionary<string, string>? Map);
 
     private const string Html = """
 <!doctype html>
@@ -121,6 +164,27 @@ public static class Admin
     <h2>Logget ind</h2>
     <table><thead><tr><th>Bruger</th><th>Enhed</th><th>App</th><th>Siden</th><th></th></tr></thead><tbody id="devices"></tbody></table>
   </section>
+
+  <section>
+    <h2>API-nøgler</h2>
+    <p class="muted" style="margin-top:0">Til andre programmer, f.eks. AutoYTDownload (scan efter nye videoer). Bruges som Jellyfins API-nøgler.</p>
+    <table><thead><tr><th>Navn</th><th>Nøgle</th><th>Oprettet</th><th></th></tr></thead><tbody id="apikeys"></tbody></table>
+    <div class="row" style="margin-top:10px"><input id="keyname" placeholder="Navn, f.eks. AutoYTDownload" style="font:inherit;padding:6px 10px;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--text);flex:1;min-width:0">
+      <button id="addkey" class="primary">Opret nøgle</button></div>
+  </section>
+
+  <section>
+    <h2>Importér fra Jellyfin</h2>
+    <p class="muted" style="margin-top:0">Henter set, fortsæt-punkter, favoritter og antal visninger. Filerne matches på slutningen af stien,
+      så det virker, selvom Jellyfin ser NAS'en et andet sted. Kan køres igen: intet, I har set i JellyLite, bliver overskrevet.</p>
+    <div class="row">
+      <input id="jfurl" placeholder="http://10.10.1.x:8096" style="font:inherit;padding:6px 10px;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--text);flex:2;min-width:180px">
+      <input id="jfkey" placeholder="API-nøgle fra Jellyfin" style="font:inherit;padding:6px 10px;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--text);flex:2;min-width:180px">
+      <button id="jfusers">Hent brugere</button>
+    </div>
+    <div id="jfmap" style="margin-top:10px"></div>
+    <div id="jfresult" style="margin-top:10px"></div>
+  </section>
 </main>
 <script>
 var users = [], pendingKey = null;
@@ -167,6 +231,10 @@ async function load() {
     return '<tr><td>' + esc(d.user) + '</td><td>' + esc(d.device) + '</td><td>' + esc(d.app) + '</td><td>' + when(d.created) +
       '</td><td><button class="danger" data-remove="' + d.id + '">Log ud</button></td></tr>';
   }).join('') || '<tr><td colspan="5" class="empty">Ingen.</td></tr>';
+  document.getElementById('apikeys').innerHTML = s.apiKeys.map(function (k) {
+    return '<tr><td>' + esc(k.name) + '</td><td><code style="user-select:all;word-break:break-all">' + esc(k.key) + '</code></td><td>' + when(k.created) +
+      '</td><td><button class="danger" data-delkey="' + k.id + '">Slet</button></td></tr>';
+  }).join('') || '<tr><td colspan="4" class="empty">Ingen.</td></tr>';
 }
 
 document.addEventListener('click', async function (e) {
@@ -179,6 +247,43 @@ document.addEventListener('click', async function (e) {
     t.blur(); load();
   } else if (t.dataset.remove) {
     await fetch('admin/api/devices/' + t.dataset.remove, { method: 'DELETE' }); load();
+  } else if (t.dataset.delkey) {
+    if (confirm('Slet nøglen? Programmer, der bruger den, mister adgang.')) { await fetch('admin/api/apikeys/' + t.dataset.delkey, { method: 'DELETE' }); load(); }
+  } else if (t.id === 'addkey') {
+    var name = document.getElementById('keyname').value.trim();
+    if (!name) { document.getElementById('keyname').focus(); return; }
+    var r = await fetch('admin/api/apikeys', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name }) });
+    if (!r.ok) alert(await r.text());
+    document.getElementById('keyname').value = ''; load();
+  } else if (t.id === 'jfusers' || t.id === 'jfimport') {
+    var body = { url: document.getElementById('jfurl').value.trim(), apiKey: document.getElementById('jfkey').value.trim() };
+    var res = document.getElementById('jfresult');
+    if (t.id === 'jfusers') {
+      res.innerHTML = '<span class="muted">Henter brugere…</span>';
+      var r1 = await fetch('admin/api/jellyfin/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r1.ok) { res.innerHTML = '<span class="warn">' + esc(await r1.text()) + '</span>'; return; }
+      var jf = await r1.json();
+      res.innerHTML = '';
+      document.getElementById('jfmap').innerHTML = '<table><thead><tr><th>Jellyfin-bruger</th><th>Importér til JellyLite-bruger</th></tr></thead><tbody>' +
+        jf.map(function (u) {
+          return '<tr><td>' + esc(u.Name) + '</td><td><select data-jf="' + esc(u.Id) + '"><option value="">— spring over —</option>' +
+            users.map(function (x) { return '<option value="' + x.id + '"' + (x.id === u.SuggestedUserId ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') +
+            '</select></td></tr>';
+        }).join('') + '</tbody></table><div class="row" style="margin-top:10px"><button id="jfimport" class="primary">Importér</button></div>';
+    } else {
+      body.map = {};
+      document.querySelectorAll('select[data-jf]').forEach(function (s) { if (s.value) body.map[s.dataset.jf] = s.value; });
+      res.innerHTML = '<span class="muted">Importerer… det kan tage et øjeblik.</span>';
+      var r2 = await fetch('admin/api/jellyfin/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r2.ok) { res.innerHTML = '<span class="warn">' + esc(await r2.text()) + '</span>'; return; }
+      var out = await r2.json();
+      res.innerHTML = out.map(function (u) {
+        return '<p><b>' + esc(u.JellyfinUser) + ' → ' + esc(u.JellyLiteUser) + ':</b> ' + u.Matched + ' af ' + u.WithData + ' matchet' +
+          (u.Unmatched ? ' · <span class="warn">' + u.Unmatched + ' ikke fundet</span>' : ' ✓') + '</p>' +
+          (u.UnmatchedSamples.length ? '<details><summary class="muted">Vis ikke fundne</summary><div class="muted" style="font-size:13px">' +
+            u.UnmatchedSamples.map(esc).join('<br>') + (u.Unmatched > u.UnmatchedSamples.length ? '<br>…' : '') + '</div></details>' : '');
+      }).join('') || '<span class="muted">Ingen brugere valgt.</span>';
+    }
   } else if (t.id === 'scan') {
     await fetch('admin/api/scan', { method: 'POST' }); setTimeout(load, 500);
   }

@@ -36,6 +36,7 @@ public sealed class Db
                 last_played TEXT, PRIMARY KEY(user_id, item_id));
             CREATE TABLE IF NOT EXISTS probe(path TEXT PRIMARY KEY, size INTEGER NOT NULL, mtime INTEGER NOT NULL, json TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS first_seen(path TEXT PRIMARY KEY, ts TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS api_keys(id INTEGER PRIMARY KEY, name TEXT NOT NULL, key TEXT UNIQUE NOT NULL, created TEXT NOT NULL);
             """);
     }
 
@@ -105,6 +106,43 @@ public sealed class Db
         while (r.Read())
             list.Add(new DeviceToken(r.GetInt64(0), Guid.Parse(r.GetString(1)), r.GetString(2), r.GetString(3), r.GetString(4), ParseIso(r.GetString(5))));
         return list;
+    }
+
+    // ---- API keys (for other programs, like Jellyfin's API keys) ----
+
+    private readonly ConcurrentDictionary<string, bool> _apiKeyCache = new();
+
+    public string AddApiKey(string name)
+    {
+        var key = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16)).ToLowerInvariant();
+        using var c = Open();
+        Exec(c, "INSERT INTO api_keys(name,key,created) VALUES($n,$k,$c)", ("$n", name), ("$k", key), ("$c", Iso(DateTime.UtcNow)));
+        _apiKeyCache.Clear();
+        return key;
+    }
+
+    public bool IsApiKey(string key) => _apiKeyCache.GetOrAdd(key, k =>
+    {
+        using var c = Open();
+        using var cmd = Cmd(c, "SELECT 1 FROM api_keys WHERE key=$k", ("$k", k));
+        return cmd.ExecuteScalar() != null;
+    });
+
+    public List<(long Id, string Name, string Key, DateTime Created)> ApiKeys()
+    {
+        using var c = Open();
+        using var cmd = Cmd(c, "SELECT id,name,key,created FROM api_keys ORDER BY created");
+        using var r = cmd.ExecuteReader();
+        var list = new List<(long, string, string, DateTime)>();
+        while (r.Read()) list.Add((r.GetInt64(0), r.GetString(1), r.GetString(2), ParseIso(r.GetString(3))));
+        return list;
+    }
+
+    public void RemoveApiKey(long id)
+    {
+        using var c = Open();
+        Exec(c, "DELETE FROM api_keys WHERE id=$i", ("$i", id));
+        _apiKeyCache.Clear();
     }
 
     // ---- User data ----

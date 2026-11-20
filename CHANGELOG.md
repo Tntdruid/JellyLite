@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.4
+
+- Import fra Jellyfin: set, fortsæt-punkter, favoritter og antal visninger pr. bruger (admin-siden → *Importér fra Jellyfin*). Brugere foreslås ud fra navnet; filer matches på slutningen af stien. Kan gentages uden at overskrive det, der er set i JellyLite siden.
+- API-nøgler til andre programmer, oprettet på admin-siden. Virker som Jellyfins nøgler (`MediaBrowser Token=…` eller `Bearer …`), og med `?userId=` på vegne af en bruger.
+- `POST /Library/Refresh` og `/Library/Media/Updated` starter en scanning, så f.eks. AutoYTDownload kan få nye videoer vist med det samme.
+- Indbygget titelretning: "Afsnit 11", "Episode 11" osv. erstattes af originaltitlen fra `.nfo` (som plugin'et Episode Title Fixer). Kan slås fra med `fix_placeholder_titles`.
+- Scanning venter ikke længere på, at ffprobe er færdig med at aflæse filer.
+- `server_id` skrives ikke længere ind i `config.json`.
+
 ## 0.1.3
 
 - Bibliotekerne har nu et billede i stedet for en grå boks: et billede i selve biblioteksmappen (`folder.jpg`, `poster.jpg`, `backdrop.jpg` …), ellers baggrunden eller thumbnailen fra det nyeste indhold.

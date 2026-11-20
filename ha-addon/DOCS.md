@@ -16,6 +16,14 @@ En lille medieserver, der taler Jellyfins API, så TvFin på Samsung-TV'et kan b
 
 I TvFin skriver du Home Assistants IP-adresse (port 8096) og vælger Quick Connect. Koden dukker op på JellyLite-siden i Home Assistant. Vælg bruger og tryk *Godkend*.
 
+## Flyt set-status fra Jellyfin
+
+Nederst på JellyLite-siden: skriv Jellyfins adresse og en API-nøgle fra Jellyfin (*Kontrolpanel → API-nøgler*), tryk *Hent brugere*, tjek hvilken JellyLite-bruger hver Jellyfin-bruger skal importeres til, og tryk *Importér*. Resultatet viser, hvor mange titler der blev fundet, og hvilke der ikke gjorde.
+
+## Andre programmer (AutoYTDownload)
+
+Opret en API-nøgle nederst på JellyLite-siden. AutoYTDownload bruger den som en Jellyfin-nøgle: sæt `JELLYFIN_URL=http://<ha-ip>:8096` og `JELLYFIN_API_KEY=<nøglen>`, så dukker nye videoer op med det samme.
+
 ## NAS der slukker
 
 Er NAS'en slukket (eller netværkslageret ikke monteret), beholder JellyLite det sidst kendte indhold, så bibliotekerne ikke bliver tomme. Afspilning virker først igen, når NAS'en er tilbage. Genstartes add-on'et, mens NAS'en er slukket, er bibliotekerne tomme, indtil den er tilbage.

@@ -81,6 +81,18 @@ public static class Endpoints
         Get(app, Info, "/System/Info/Public", "/System/Info");
         app.MapMethods("/System/Ping", ["GET", "POST"], () => "JellyLite");
         Get(app, () => new { LoginDisclaimer = "", CustomCss = "", SplashscreenEnabled = false }, "/Branding/Configuration");
+
+        // "Scan now" for other programs (e.g. a downloader that just added videos). Needs an API key, like in Jellyfin.
+        // The paths in /Library/Media/Updated are only a hint: the whole library is rescanned, which is cheap.
+        foreach (var p in new[] { "/Library/Refresh", "/Library/Media/Updated", "/Library/Movies/Updated", "/Library/Series/Updated" })
+        {
+            app.MapPost(p, (HttpContext h, LibraryService ls) =>
+            {
+                if (!AuthMiddleware.IsApiKey(h)) return Results.StatusCode(StatusCodes.Status403Forbidden);
+                ls.RequestScan();
+                return Results.NoContent();
+            });
+        }
     }
 
     // ---------- Sign-in (Quick Connect only) ----------

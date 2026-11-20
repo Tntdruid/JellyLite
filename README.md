@@ -11,6 +11,9 @@ En lille medieserver, der taler den del af Jellyfins API, som [TvFin](https://gi
 - **Fortsæt, næste afsnit, set og favoritter** pr. bruger. "Fortsæt" gemmes løbende, så det også virker, når TV'et bare slukkes.
 - **Spring intro over** fra kapitler, der hedder *Intro*, *Recap*, *Credits* eller *Preview*.
 - **Quick Connect-login**: TV'et viser en kode, som du godkender på admin-siden.
+- **Titelretning**: afsnit med en pladsholdertitel som "Afsnit 11" får originaltitlen fra `.nfo`-filen (samme regel som plugin'et Episode Title Fixer).
+- **Import fra Jellyfin**: set, fortsæt-punkter, favoritter og antal visninger hentes pr. bruger fra en Jellyfin-server (admin-siden → *Importér fra Jellyfin*). Brugere foreslås ud fra navnet, og filer matches på slutningen af stien, så det virker, selvom Jellyfin ser NAS'en under en anden mappe. Importen kan gentages uden at overskrive det, der er set i JellyLite siden.
+- **API-nøgler** til andre programmer, oprettet på admin-siden. Med en nøgle kan et program bede om en scanning (`POST /Library/Refresh` eller `/Library/Media/Updated`, ligesom i Jellyfin) og læse data for en bruger med `?userId=`.
 
 ## Kom i gang (Windows/Linux)
 
@@ -44,6 +47,19 @@ Første start skriver `data/config.json`. Ret den og genstart:
 | `ffprobe` / `ffmpeg` | `ffprobe` / `ffmpeg` | Stier; tom = slået fra |
 | `admin_password` | – | Uden kode kan admin-siden kun åbnes fra serveren selv (og via Home Assistant) |
 | `season_label` | `Sæson` | "Sæson 1" |
+| `fix_placeholder_titles` | `true` | "Afsnit 11" → originaltitel fra `.nfo` |
+| `placeholder_title_pattern` | se kode | Regex for hvad der tæller som pladsholdertitel |
+
+### Ny video med det samme (AutoYTDownload)
+
+Opret en API-nøgle på admin-siden, og sæt den i `jellyfin.conf`:
+
+```bash
+JELLYFIN_URL=http://<jellylite-ip>:8096
+JELLYFIN_API_KEY=<nøglen>
+```
+
+`JELLYFIN_PATH` kan blive stående eller slettes: JellyLite scanner hele biblioteket ved hver forespørgsel.
 
 Datamappen er `./data`, eller `$JELLYLITE_DATA`. Konfigurationen kan også peges ud med `$JELLYLITE_CONFIG`.
 

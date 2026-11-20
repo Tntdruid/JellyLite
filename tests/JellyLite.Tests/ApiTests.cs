@@ -123,7 +123,7 @@ public sealed class ApiTests(ServerFixture fx) : IClassFixture<ServerFixture>
         Assert.Equal(["Sæson 1", "Sæson 2", "Specials"], seasons.Select(Name).Order(StringComparer.Ordinal).OrderBy(n => n == "Specials"));
 
         var eps = Items(await Json(c, $"/Shows/{Id(show)}/Episodes"));
-        Assert.Equal(["Piloten", "Second", "Tenth", "Episode 1", "Bonus"], eps.Select(Name));
+        Assert.Equal(["Piloten", "Second", "Tiende", "Episode 1", "Bonus"], eps.Select(Name));   // "Afsnit 10" -> original title
         Assert.Equal("Test Show", eps[0].GetProperty("SeriesName").GetString());
         Assert.Equal(10, eps[2].GetProperty("IndexNumber").GetInt32());
         Assert.Equal(2, eps[3].GetProperty("ParentIndexNumber").GetInt32());

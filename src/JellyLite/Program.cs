@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using JellyLite;
 using JellyLite.Api;
 using JellyLite.Auth;
+using JellyLite.Import;
 using JellyLite.Storage;
 using JellyLite.Library;
 using JellyLite.Media;
@@ -27,6 +28,8 @@ builder.Services.AddSingleton<QuickConnectStore>();
 builder.Services.AddSingleton<LibraryService>();
 builder.Services.AddHostedService(sp => sp.GetRequiredService<LibraryService>());
 builder.Services.AddHttpClient();
+builder.Services.AddHttpClient(JellyfinImport.HttpClientName);
+builder.Services.AddSingleton<JellyfinImport>();
 builder.Services.AddCors();
 builder.Services.ConfigureHttpJsonOptions(o =>
 {

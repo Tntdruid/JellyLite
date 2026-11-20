@@ -41,7 +41,9 @@ public sealed partial record ClientInfo(string Client, string Device, string Dev
         var header = req.Headers.Authorization.FirstOrDefault() ?? req.Headers["X-Emby-Authorization"].FirstOrDefault() ?? "";
         var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         foreach (Match m in Pair().Matches(header)) values[m.Groups[1].Value] = WebUtility.UrlDecode(m.Groups[2].Value);
+        var bearer = header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? header[7..].Trim() : null;
         var token = values.GetValueOrDefault("Token")
+            ?? bearer
             ?? req.Headers["X-Emby-Token"].FirstOrDefault()
             ?? req.Headers["X-MediaBrowser-Token"].FirstOrDefault()
             ?? req.Query["api_key"].FirstOrDefault()
@@ -124,21 +126,45 @@ public sealed partial class AuthMiddleware(RequestDelegate next)
     [GeneratedRegex(@"^/(?:Items|Users)/[^/]+/Images/", RegexOptions.IgnoreCase)]
     private static partial Regex ImagePath();
 
+    [GeneratedRegex(@"^/Users/([0-9a-fA-F-]{32,36})(?:/|$)")]
+    private static partial Regex UserInPath();
+
     public async Task Invoke(HttpContext ctx, Db db, Users users)
     {
         var client = ClientInfo.From(ctx.Request);
         ctx.Items["client"] = client;
-        if (client.Token != null && db.UserForToken(client.Token) is Guid uid && users.Get(uid) is { } user)
-            ctx.Items["user"] = user;
-
         var path = ctx.Request.Path.Value ?? "/";
-        if (ctx.Items.ContainsKey("user") || HttpMethods.IsOptions(ctx.Request.Method) || PublicPath().IsMatch(path) || ImagePath().IsMatch(path))
+        if (client.Token != null && db.UserForToken(client.Token) is Guid uid && users.Get(uid) is { } user)
         {
-            await next(ctx);
+            ctx.Items["user"] = user;
+        }
+        else if (client.Token != null && db.IsApiKey(client.Token))
+        {
+            // Like Jellyfin: an API key acts for the user named in ?userId= or /Users/{id}/...
+            ctx.Items["apikey"] = true;
+            var inPath = UserInPath().Match(path);
+            var named = ctx.Request.Query["userId"].FirstOrDefault() ?? (inPath.Success ? inPath.Groups[1].Value : null);
+            if (Ids.Parse(named) is Guid nid && users.Get(nid) is { } apiUser) ctx.Items["user"] = apiUser;
+        }
+
+        if (!ctx.Items.ContainsKey("user") && !ctx.Items.ContainsKey("apikey") && !HttpMethods.IsOptions(ctx.Request.Method) &&
+            !PublicPath().IsMatch(path) && !ImagePath().IsMatch(path))
+        {
+            ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;
         }
-        ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+        try
+        {
+            await next(ctx);
+        }
+        catch (UserRequiredException) when (!ctx.Response.HasStarted)
+        {
+            ctx.Response.StatusCode = StatusCodes.Status400BadRequest;
+            await ctx.Response.WriteAsync("This call needs a user: add ?userId=<id> when using an API key");
+        }
     }
+
+    public static bool IsApiKey(HttpContext ctx) => ctx.Items.ContainsKey("apikey");
 
     public static string NewToken() => Convert.ToHexString(RandomNumberGenerator.GetBytes(16)).ToLowerInvariant();
 
@@ -166,8 +192,11 @@ public sealed partial class AuthMiddleware(RequestDelegate next)
     }
 }
 
+/// <summary>Thrown when an API-key call reaches an endpoint that works per user, without saying which user.</summary>
+public sealed class UserRequiredException : Exception;
+
 public static class HttpContextExtensions
 {
-    public static UserInfo User(this HttpContext c) => (UserInfo)c.Items["user"]!;
+    public static UserInfo User(this HttpContext c) => c.Items["user"] as UserInfo ?? throw new UserRequiredException();
     public static ClientInfo Client(this HttpContext c) => (ClientInfo)c.Items["client"]!;
 }

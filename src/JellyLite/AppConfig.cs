@@ -28,6 +28,13 @@ public sealed class AppConfig
     /// <summary>Season name prefix, e.g. "Sæson" -> "Sæson 1".</summary>
     public string SeasonLabel { get; set; } = "Sæson";
     public string SpecialsLabel { get; set; } = "Specials";
+    /// <summary>Replace placeholder titles like "Afsnit 11" with the original title from the .nfo (like the Episode Title Fixer plugin).</summary>
+    public bool FixPlaceholderTitles { get; set; } = true;
+    /// <summary>What counts as a placeholder title (case-insensitive). Empty = the default below.</summary>
+    public string? PlaceholderTitlePattern { get; set; }
+
+    public const string DefaultPlaceholderPattern =
+        @"^\s*(Afsnit|Episode|Avsnitt|Episodi|Jakso|Þáttur|Folge|Aflevering|Épisode|Episodio|Odcinek|Epizoda|Epizód)\s*#?\d+\s*$";
 
     [JsonIgnore] public string? LoadedFrom { get; set; }
 
@@ -81,7 +88,7 @@ public sealed class AppConfig
         LoadedFrom = path;
     }
 
-    public string ServerId => Ids.N(Ids.From("server:" + ServerName));
+    [JsonIgnore] public string ServerId => Ids.N(Ids.From("server:" + ServerName));
 }
 
 public sealed class LibraryConfig
