@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/JellyLite/JellyLite.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/JellyLite.Tests/JellyLite.Tests.csproj" />
+  </Folder>
+</Solution>

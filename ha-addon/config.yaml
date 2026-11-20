@@ -1,0 +1,51 @@
+name: JellyLite
+version: "0.1.0"
+slug: jellylite
+description: Simpel Jellyfin-kompatibel medieserver til TvFin (kun direct play, ingen omkodning)
+url: https://github.com/Tntdruid/JellyLite
+arch:
+  - amd64
+  - aarch64
+image: ghcr.io/tntdruid/jellylite-{arch}
+init: false
+startup: services
+boot: auto
+ingress: true
+ingress_port: 8096
+panel_icon: mdi:television-play
+panel_title: JellyLite
+ports:
+  8096/tcp: 8096
+ports_description:
+  8096/tcp: TvFin forbinder her (samme port som Jellyfin)
+map:
+  - type: media
+    read_only: true
+  - type: share
+    read_only: true
+options:
+  server_name: JellyLite
+  libraries:
+    - name: Film
+      path: /media/Film
+      type: movies
+    - name: Serier
+      path: /media/Serier
+      type: tvshows
+    - name: YouTube
+      path: /media/YouTube
+      type: youtube
+  users:
+    - name: Stue
+  scan_interval_minutes: 15
+schema:
+  server_name: str
+  libraries:
+    - name: str
+      path: str
+      type: list(movies|tvshows|youtube)
+  users:
+    - name: str
+  scan_interval_minutes: int(1,1440)
+  admin_password: password?
+  season_label: str?

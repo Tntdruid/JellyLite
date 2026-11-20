@@ -1,0 +1,4 @@
+# Lets Home Assistant use this GitHub repo as an add-on repository
+name: JellyLite
+url: https://github.com/Tntdruid/JellyLite
+maintainer: Tntdruid
