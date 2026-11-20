@@ -1,5 +1,5 @@
 name: JellyLite
-version: "0.1.0"
+version: "0.1.1"
 slug: jellylite
 description: Simpel Jellyfin-kompatibel medieserver til TvFin (kun direct play, ingen omkodning)
 url: https://github.com/Tntdruid/JellyLite

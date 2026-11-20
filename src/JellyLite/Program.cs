@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 using JellyLite;
 using JellyLite.Api;
 using JellyLite.Auth;
-using JellyLite.Data;
+using JellyLite.Storage;
 using JellyLite.Library;
 using JellyLite.Media;
 

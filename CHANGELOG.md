@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+- Rettet: databasekoden manglede i 0.1.0 på GitHub (en `.gitignore`-regel for datamappen ramte også kildemappen `Data` på Windows), så Docker-imaget kunne ikke bygges. Mappen hedder nu `Storage`, så den heller ikke kolliderer med datamappen, når serveren startes fra projektmappen.
+- Docker-workflowet bygger nu også arm64-imaget (QEMU).
+- Nyt CI-workflow, der bygger og tester fra en ren checkout ved hvert push.
+
 ## 0.1.0
 
 Første version.

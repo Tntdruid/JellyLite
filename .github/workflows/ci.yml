@@ -1,0 +1,18 @@
+name: Build and test
+
+# Builds from a clean checkout, so files missing from git (e.g. by a .gitignore rule) are caught
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: dotnet test -c Release

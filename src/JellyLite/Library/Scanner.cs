@@ -1,4 +1,4 @@
-using JellyLite.Data;
+using JellyLite.Storage;
 using JellyLite.Media;
 
 namespace JellyLite.Library;
